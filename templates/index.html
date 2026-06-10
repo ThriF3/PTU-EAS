@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Calculator | Kalkulator Suara</title>
+    <!-- Use Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Include RecordRTC for easy WAV recording -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.min.js"></script>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+
+<body>
+
+    <div class="background-animation">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+    </div>
+
+    <div class="container">
+        <div class="calculator-glass">
+            <header>
+                <h1>Kalkulator Suara</h1>
+                <p>Ucapkan matematika dalam bahasa Indonesia</p>
+                <small>(Contoh: "dua tambah tiga")</small>
+            </header>
+
+            <div style="text-align: center; margin-top: -15px;">
+                <a href="/tts"
+                    style="color: var(--primary); text-decoration: none; font-size: 0.9rem; transition: color 0.3s;"><i
+                        class="fas fa-volume-up"></i> Ke Halaman Text-to-Speech</a>
+            </div>
+
+            <div class="display-area">
+                <div class="expression" id="expression-display">...</div>
+                <div class="normalized" id="normalized-display"
+                    style="color: var(--primary); font-size: 0.9rem; margin-bottom: 10px;"></div>
+                <div class="result" id="result-display">0</div>
+            </div>
+
+            <div class="controls">
+                <button id="mic-btn" class="mic-btn">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <div class="status-text" id="status-text">Tekan mic untuk mulai berbicara</div>
+            </div>
+
+            <div class="log-area" id="log-area">
+                <!-- Logs will appear here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const micBtn = document.getElementById('mic-btn');
+        const statusText = document.getElementById('status-text');
+        const expressionDisplay = document.getElementById('expression-display');
+        const normalizedDisplay = document.getElementById('normalized-display');
+        const resultDisplay = document.getElementById('result-display');
+        const logArea = document.getElementById('log-area');
+
+        let isRecording = false;
+        let recorder = null;
+        let micStream = null;
+
+        micBtn.addEventListener('click', async () => {
+            if (!isRecording) {
+                // START RECORDING
+                try {
+                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                    // We use StereoAudioRecorder to force WAV format
+                    recorder = new RecordRTC(micStream, {
+                        type: 'audio',
+                        mimeType: 'audio/wav',
+                        recorderType: StereoAudioRecorder,
+                        numberOfAudioChannels: 1,
+                        desiredSampRate: 16000
+                    });
+
+                    recorder.startRecording();
+                    isRecording = true;
+
+                    micBtn.classList.add('listening');
+                    micBtn.classList.remove('error');
+                    micBtn.innerHTML = '<i class="fas fa-stop"></i>';
+                    statusText.textContent = "Sedang Merekam... Tekan lagi untuk berhenti";
+                    expressionDisplay.textContent = "...";
+                    normalizedDisplay.textContent = "";
+                    resultDisplay.textContent = "0";
+
+                } catch (err) {
+                    console.error("Mic error:", err);
+                    statusText.textContent = "Gagal mengakses mikrofon";
+                    micBtn.classList.add('error');
+                }
+
+            } else {
+                // STOP RECORDING
+                isRecording = false;
+                micBtn.classList.remove('listening');
+                micBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+                statusText.textContent = "Memproses...";
+
+                recorder.stopRecording(async () => {
+                    let blob = recorder.getBlob();
+
+                    // Stop mic stream
+                    if (micStream) {
+                        micStream.getTracks().forEach(track => track.stop());
+                    }
+
+                    let formData = new FormData();
+                    formData.append('audio', blob, 'audio.wav');
+
+                    try {
+                        const response = await fetch('/upload_audio', {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        const data = await response.json();
+                        micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+
+                        if (response.ok) {
+                            statusText.textContent = "Selesai memproses";
+                            expressionDisplay.textContent = data.recognized_text || "Tidak ada suara";
+                            normalizedDisplay.textContent = data.normalized_text ? `(Normalized: ${data.normalized_text})` : "";
+
+                            if (data.result !== undefined && data.result !== "") {
+                                resultDisplay.textContent = data.result;
+                                addLog(data.recognized_text, data.result);
+                            } else if (data.error) {
+                                resultDisplay.textContent = "Error";
+                                statusText.textContent = data.error;
+                                micBtn.classList.add('error');
+                            }
+                        } else {
+                            statusText.textContent = data.error || "Terjadi kesalahan server";
+                            micBtn.classList.add('error');
+                        }
+                    } catch (error) {
+                        console.error("Upload Error:", error);
+                        micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
+                        micBtn.classList.add('error');
+                        statusText.textContent = "Gagal terhubung ke server";
+                    }
+                });
+            }
+        });
+
+        function addLog(expr, res) {
+            const entry = document.createElement('div');
+            entry.className = 'log-entry fade-in';
+            entry.innerHTML = `<span>${expr}</span> <strong>= ${res}</strong>`;
+            logArea.prepend(entry);
+        }
+    </script>
+</body>
+
+</html>

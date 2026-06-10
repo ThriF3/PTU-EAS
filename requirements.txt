@@ -1,0 +1,5 @@
+flask
+SpeechRecognition
+PyAudio
+gTTS
+pygame
