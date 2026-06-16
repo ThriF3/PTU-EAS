@@ -82,6 +82,13 @@ Buka browser dan akses:
 http://localhost:5000
 ```
 
+## Run frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
 ---
 
 ## Halaman Aplikasi
