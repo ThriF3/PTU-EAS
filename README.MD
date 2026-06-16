@@ -21,7 +21,7 @@ Atau download manual dari https://ffmpeg.org dan tambahkan ke PATH.
 
 **1. Clone repository**
 ```bash
-git clone https://github.com/username/PTU-EAS.git
+git clone https://github.com/ThriF3/PTU-EAS.git
 cd PTU-EAS
 ```
 
