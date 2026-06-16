@@ -5,13 +5,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Voice Calculator | Kalkulator Suara</title>
-    <!-- Use Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-    <!-- Font Awesome for icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Include RecordRTC for easy WAV recording -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/RecordRTC/5.6.2/RecordRTC.min.js"></script>
     <link rel="stylesheet" href="../static/style.css">
+    <style>
+        .container {
+            max-width: 860px !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            gap: 20px !important;
+        }
+        .info-panel {
+            width: 220px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-top: 4px;
+        }
+        .info-card {
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(59, 130, 246, 0.12);
+            border-radius: 16px;
+            padding: 16px;
+            backdrop-filter: blur(20px);
+        }
+        .info-card h3 {
+            font-size: 0.65rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #3b82f6;
+            margin: 0 0 10px;
+        }
+        .info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 7px;
+            font-size: 0.75rem;
+            margin-bottom: 6px;
+        }
+        .info-item:last-child { margin-bottom: 0; }
+        .info-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #3b82f6;
+            margin-top: 6px;
+            flex-shrink: 0;
+            opacity: 0.7;
+        }
+        .info-item span { color: #93c5fd; line-height: 1.5; }
+        .info-item strong { color: #f8fafc; font-weight: 400; display: block; }
+        .tag-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 2px;
+        }
+        .tag {
+            font-size: 0.65rem;
+            padding: 2px 7px;
+            border-radius: 20px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            background: rgba(59, 130, 246, 0.07);
+        }
+        .calculator-glass { flex: 1; min-width: 0; }
+        @media (max-width: 720px) {
+            .container { flex-direction: column-reverse !important; }
+            .info-panel { width: 100%; flex-direction: row; flex-wrap: wrap; }
+            .info-card { flex: 1; min-width: 140px; }
+        }
+    </style>
 </head>
 
 <body>
@@ -22,6 +89,57 @@
     </div>
 
     <div class="container">
+
+        <!-- Info Panel -->
+        <div class="info-panel">
+
+            <div class="info-card">
+                <h3>STT Model</h3>
+                <div class="info-item">
+                    <div class="info-dot"></div>
+                    <span><strong>Wav2Vec2ForCTC</strong>fine-tuned dari wav2vec2-large-xlsr-indonesian</span>
+                </div>
+                <div class="info-item">
+                    <div class="info-dot"></div>
+                    <span><strong>WER 10.2%</strong>30 epoch · batch 16</span>
+                </div>
+                <div class="info-item">
+                    <div class="info-dot"></div>
+                    <span><strong>200 sampel</strong>rekaman suara sendiri</span>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h3>Cara Pakai</h3>
+                <div class="info-item">
+                    <div class="info-dot"></div>
+                    <span>Tekan tombol mic untuk mulai merekam</span>
+                </div>
+                <div class="info-item">
+                    <div class="info-dot"></div>
+                    <span>Ucapkan ekspresi matematika dalam bahasa Indonesia (contoh: "dua tambah tiga")</span>
+                </div>
+                <div class="info-item">
+                    <div class="info-dot"></div>
+                    <span>Tekan tombol mic lagi untuk berhenti dan melihat hasil</span>
+                </div>
+            </div>
+
+            <div class="info-card">
+                <h3>Stack</h3>
+                <div class="tag-row">
+                    <span class="tag">Flask</span>
+                    <span class="tag">PyTorch</span>
+                    <span class="tag">HuggingFace</span>
+                    <span class="tag">soundfile</span>
+                    <span class="tag">pygame</span>
+                    <span class="tag">Colab T4</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Main Calculator -->
         <div class="calculator-glass">
             <header>
                 <h1>Kalkulator Suara</h1>
@@ -30,15 +148,29 @@
             </header>
 
             <div style="text-align: center; margin-top: -15px;">
-                <a href="/tts"
-                    style="color: var(--primary); text-decoration: none; font-size: 0.9rem; transition: color 0.3s;"><i
-                        class="fas fa-volume-up"></i> Ke Halaman Text-to-Speech</a>
+                <a href="/tts" style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    color: #3b82f6;
+                    text-decoration: none;
+                    font-size: 0.85rem;
+                    font-weight: 400;
+                    padding: 8px 18px;
+                    border: 1px solid rgba(59, 130, 246, 0.35);
+                    border-radius: 50px;
+                    background: rgba(59, 130, 246, 0.07);
+                    transition: all 0.25s;
+                " onmouseover="this.style.background='rgba(74,222,128,0.15)'; this.style.borderColor='rgba(74,222,128,0.6)'"
+                   onmouseout="this.style.background='rgba(74,222,128,0.07)'; this.style.borderColor='rgba(74,222,128,0.35)'">
+                    <i class="fas fa-volume-up"></i> Ke Halaman Text-to-Speech
+                </a>
             </div>
 
             <div class="display-area">
                 <div class="expression" id="expression-display">...</div>
                 <div class="normalized" id="normalized-display"
-                    style="color: var(--primary); font-size: 0.9rem; margin-bottom: 10px;"></div>
+                    style="color: var(--primary); font-size: 0.85rem; font-weight: 300; margin-bottom: 10px;"></div>
                 <div class="result" id="result-display">0</div>
             </div>
 
@@ -49,10 +181,9 @@
                 <div class="status-text" id="status-text">Tekan mic untuk mulai berbicara</div>
             </div>
 
-            <div class="log-area" id="log-area">
-                <!-- Logs will appear here -->
-            </div>
+            <div class="log-area" id="log-area"></div>
         </div>
+
     </div>
 
     <script>
@@ -69,11 +200,8 @@
 
         micBtn.addEventListener('click', async () => {
             if (!isRecording) {
-                // START RECORDING
                 try {
                     micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-
-                    // We use StereoAudioRecorder to force WAV format
                     recorder = new RecordRTC(micStream, {
                         type: 'audio',
                         mimeType: 'audio/wav',
@@ -81,26 +209,21 @@
                         numberOfAudioChannels: 1,
                         desiredSampRate: 16000
                     });
-
                     recorder.startRecording();
                     isRecording = true;
-
                     micBtn.classList.add('listening');
                     micBtn.classList.remove('error');
                     micBtn.innerHTML = '<i class="fas fa-stop"></i>';
-                    statusText.textContent = "Sedang Merekam... Tekan lagi untuk berhenti";
+                    statusText.textContent = "Sedang merekam... Tekan lagi untuk berhenti";
                     expressionDisplay.textContent = "...";
                     normalizedDisplay.textContent = "";
                     resultDisplay.textContent = "0";
-
                 } catch (err) {
                     console.error("Mic error:", err);
                     statusText.textContent = "Gagal mengakses mikrofon";
                     micBtn.classList.add('error');
                 }
-
             } else {
-                // STOP RECORDING
                 isRecording = false;
                 micBtn.classList.remove('listening');
                 micBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -108,32 +231,23 @@
 
                 recorder.stopRecording(async () => {
                     let blob = recorder.getBlob();
-
-                    // Stop mic stream
-                    if (micStream) {
-                        micStream.getTracks().forEach(track => track.stop());
-                    }
+                    if (micStream) micStream.getTracks().forEach(track => track.stop());
 
                     let formData = new FormData();
                     formData.append('audio', blob, 'audio.wav');
 
                     try {
-                        const response = await fetch('/upload_audio', {
-                            method: 'POST',
-                            body: formData
-                        });
-
+                        const response = await fetch('/upload_audio', { method: 'POST', body: formData });
                         const data = await response.json();
                         micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
 
                         if (response.ok) {
                             statusText.textContent = "Selesai memproses";
-                            expressionDisplay.textContent = data.recognized_text || "Tidak ada suara";
-                            normalizedDisplay.textContent = data.normalized_text ? `(Normalized: ${data.normalized_text})` : "";
-
+                            expressionDisplay.textContent = data.expression || data.recognized_text || "Tidak ada suara";
+                            normalizedDisplay.textContent = data.recognized_text ? `(${data.recognized_text})` : "";
                             if (data.result !== undefined && data.result !== "") {
                                 resultDisplay.textContent = data.result;
-                                addLog(data.recognized_text, data.result);
+                                addLog(data.expression || data.recognized_text, data.result);
                             } else if (data.error) {
                                 resultDisplay.textContent = "Error";
                                 statusText.textContent = data.error;
@@ -144,7 +258,6 @@
                             micBtn.classList.add('error');
                         }
                     } catch (error) {
-                        console.error("Upload Error:", error);
                         micBtn.innerHTML = '<i class="fas fa-microphone"></i>';
                         micBtn.classList.add('error');
                         statusText.textContent = "Gagal terhubung ke server";
