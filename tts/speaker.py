@@ -1,4 +1,5 @@
 import os
+import re
 import time
 import tempfile
 import threading
@@ -67,11 +68,54 @@ def _load_models() -> None:
     log(f"Loading speaker embedding dari: {SPEAKER_EMBEDDING_PATH}")
     _speaker_embedding = torch.load(SPEAKER_EMBEDDING_PATH, map_location="cpu")
 
-    # Pastikan shape [1, 512]
     if _speaker_embedding.dim() == 1:
         _speaker_embedding = _speaker_embedding.unsqueeze(0)
 
     log("SpeechT5 semua komponen berhasil di-load.")
+
+
+# ---------------------------------------------------------------------------
+# Normalisasi teks — konversi angka & simbol ke kata Indonesia
+# ---------------------------------------------------------------------------
+
+SYMBOL_TO_WORD = {
+    '+': ' tambah ', '-': ' kurang ',
+    '*': ' kali ',  '/': ' bagi ',
+    ':': ' bagi ',  '=': ' sama dengan ',
+}
+
+
+def _num_to_id(n: int) -> str:
+    """Konversi integer ke kata bilangan Indonesia."""
+    ones = ['', 'satu', 'dua', 'tiga', 'empat', 'lima',
+            'enam', 'tujuh', 'delapan', 'sembilan']
+    if n == 0: return 'nol'
+    if n < 0:  return 'negatif ' + _num_to_id(-n)
+    if n < 10: return ones[n]
+    if n == 10: return 'sepuluh'
+    if n < 20: return ones[n - 10] + ' belas'
+    if n < 100:
+        r = '' if n % 10 == 0 else ' ' + ones[n % 10]
+        return ones[n // 10] + ' puluh' + r
+    if n < 200:
+        r = '' if n % 100 == 0 else ' ' + _num_to_id(n % 100)
+        return 'seratus' + r
+    if n < 1000:
+        r = '' if n % 100 == 0 else ' ' + _num_to_id(n % 100)
+        return ones[n // 100] + ' ratus' + r
+    if n < 2000:
+        r = '' if n % 1000 == 0 else ' ' + _num_to_id(n % 1000)
+        return 'seribu' + r
+    r = '' if n % 1000 == 0 else ' ' + _num_to_id(n % 1000)
+    return _num_to_id(n // 1000) + ' ribu' + r
+
+
+def _normalize_for_tts(text: str) -> str:
+    """Konversi angka dan simbol ke kata Indonesia sebelum di-speak."""
+    for sym, word in SYMBOL_TO_WORD.items():
+        text = text.replace(sym, word)
+    text = re.sub(r'\d+', lambda m: _num_to_id(int(m.group())), text)
+    return re.sub(r'\s+', ' ', text).strip()
 
 
 # ---------------------------------------------------------------------------
@@ -110,7 +154,7 @@ def speak(text: str) -> None:
     if not text or not text.strip():
         raise ValueError("speak() menerima teks kosong.")
 
-    stripped = text.strip()
+    stripped = _normalize_for_tts(text.strip())
     log(f"speak() dipanggil dengan: '{stripped}'")
 
     # Load model jika belum
