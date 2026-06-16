@@ -1,13 +1,17 @@
 from flask import Flask, render_template, jsonify, request
+from flask_cors import CORS
 from stt.recognizer import SpeechRecognizer
 from core.parser import parse_text
 from core.calculator import calculate
 from core.normalizer import normalize
 from tts.speaker import speak
+from pdf_routes import pdf_bp
 from utils.logger import log
 import traceback
 
 app = Flask(__name__)
+CORS(app, resources={r"/pdf/*": {"origins": "*"}})
+app.register_blueprint(pdf_bp)
 
 # Initialize recognizer lazily or globally
 # Global initialization means the model is loaded when the server starts.
