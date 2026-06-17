@@ -71,6 +71,9 @@ function init() {
   // Initialize focusable elements
   updateFocusableElements();
 
+  // Muat daftar buku dari backend ke dalam library grid
+  loadLibrary();
+
   console.log('AudioBook initialized successfully');
 }
 
@@ -293,6 +296,10 @@ function activateElement(element) {
     skipChunks(-1);
   } else if (action === 'reader-skip-5-bck') {
     skipChunks(-5);
+  } else if (action === 'open-book') {
+    openBook(bookId);
+  } else if (action === 'go-to-library') {
+    navigateToPage('library');
   } else if (bookId) {
     navigateToBookDetail(bookId);
   } else if (setting) {
@@ -575,7 +582,7 @@ function handleSettingChange(settingName) {
   if (!settingItem) return;
 
   switch (settingName) {
-    case 'speed':
+    case 'speed': {
       // Cycle through speeds: 0.5, 1.0, 1.5, 2.0, 3.0
       const speeds = [0.5, 1.0, 1.5, 2.0, 3.0];
       const currentIndex = speeds.indexOf(state.playbackSpeed);
@@ -593,8 +600,9 @@ function handleSettingChange(settingName) {
 
       showToast(`Playback speed: ${state.playbackSpeed}×`);
       break;
+    }
 
-    case 'high-contrast':
+    case 'high-contrast': {
       const toggle = settingItem.querySelector('.toggle-track');
       const isActive = toggle?.classList.contains('active');
 
@@ -608,8 +616,9 @@ function handleSettingChange(settingName) {
         }
       }
       break;
+    }
 
-    case 'caption-size':
+    case 'caption-size': {
       const sizes = [16, 18, 22];
       const sizeLabels = ['Small', 'Medium', 'Large'];
       const currentSizeIndex = sizes.indexOf(state.captionFontSize);
@@ -631,8 +640,9 @@ function handleSettingChange(settingName) {
 
       showToast(`Caption size: ${sizeLabels[nextSizeIndex]}`);
       break;
+    }
 
-    case 'voice':
+    case 'voice': {
       const voices = ['Natural Female', 'Natural Male', 'Clear'];
       const voiceValue = settingItem.querySelector('.setting-value');
       const currentVoice = voiceValue?.textContent || 'Natural Female';
@@ -649,8 +659,9 @@ function handleSettingChange(settingName) {
 
       showToast(`Voice: ${voices[nextVoiceIndex]}`);
       break;
+    }
 
-    case 'swipe-sensitivity':
+    case 'swipe-sensitivity': {
       const sensitivities = { 'Low': 90, 'Medium': 60, 'High': 40 };
       const sensitivityLabels = ['Low', 'Medium', 'High'];
       const sensValue = settingItem.querySelector('.setting-value');
@@ -671,6 +682,7 @@ function handleSettingChange(settingName) {
 
       showToast(`Swipe sensitivity: ${nextSens}`);
       break;
+    }
   }
 }
 
@@ -719,6 +731,9 @@ async function submitPdfUpload() {
 
     showToast('Buku dimuat! ' + data.total + ' bagian tersedia');
     setTimeout(() => updateFocusableElements(), 100);
+
+    // Refresh library grid supaya buku baru langsung muncul
+    loadLibrary();
 
   } catch (err) {
     console.error('Upload error:', err);
@@ -988,6 +1003,121 @@ function skipChunks(n) {
   showToast(dir + ' \u2192 Bagian ' + (newIndex + 1) + ' dari ' + chunks.length);
 
   if (wasPlaying) playCurrentChunk();
+}
+
+// ============================================================
+// Library — Memuat & Menampilkan Daftar Buku Tersimpan
+// ============================================================
+
+// Muat semua buku dari backend
+async function loadLibrary() {
+  try {
+    const response = await fetch('/pdf/library');
+    if (!response.ok) throw new Error('Gagal memuat perpustakaan');
+    const books = await response.json();
+    renderLibraryGrid(books);
+  } catch (err) {
+    console.error('Library load error:', err);
+    renderLibraryGrid([]); // tetap render upload card walau gagal/empty
+  }
+}
+
+// Render kartu buku ke dalam #library-grid
+function renderLibraryGrid(books) {
+  const grid = document.getElementById('library-grid');
+  if (!grid) return;
+
+  // Bersihkan grid (menghapus semua mock data + kartu lama)
+  grid.innerHTML = '';
+
+  const COLORS = [
+    'linear-gradient(135deg, #34d399, #10b981)',
+    'linear-gradient(135deg, #fbbf24, #f59e0b)',
+    'linear-gradient(135deg, #f97316, #dc2626)',
+    'linear-gradient(135deg, #a78bfa, #7c3aed)',
+    'linear-gradient(135deg, #60a5fa, #2563eb)',
+    'linear-gradient(135deg, #f472b6, #db2777)',
+  ];
+  const EMOJIS = ['📖', '📗', '📕', '📘', '📙', '📚'];
+
+  if (books.length === 0) {
+    const empty = document.createElement('p');
+    empty.style.cssText = 'color:#666;font-size:16px;grid-column:1/-1;padding:24px 0;';
+    empty.textContent = 'Belum ada buku. Unggah PDF pertama Anda!';
+    grid.appendChild(empty);
+  }
+
+  books.forEach((book, index) => {
+    const ci   = index % COLORS.length;
+    const card = document.createElement('div');
+    card.className = 'book-card';
+    card.setAttribute('role',         'button');
+    card.setAttribute('tabIndex',     '0');
+    card.setAttribute('data-book-id', book.id);
+    card.setAttribute('data-action',  'open-book');
+    card.setAttribute('data-caption',
+      `${book.title} oleh ${book.author}, double-click untuk membuka buku`);
+
+    card.innerHTML = `
+      <div class="book-cover" style="background:${COLORS[ci]}">
+        <span class="book-emoji">${EMOJIS[ci]}</span>
+      </div>
+      <h3 class="book-card-title">${book.title}</h3>
+      <p class="book-card-author">${book.author}</p>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Selalu tambahkan kartu "Add New Book" di akhir
+  const uploadCard = document.createElement('div');
+  uploadCard.className = 'upload-zone-card';
+  uploadCard.setAttribute('role',         'button');
+  uploadCard.setAttribute('tabIndex',     '0');
+  uploadCard.setAttribute('data-action',  'upload');
+  uploadCard.setAttribute('data-caption',
+    'Tambah buku baru ke perpustakaan, double-click untuk mengunggah PDF');
+  uploadCard.innerHTML = `
+    <div class="upload-icon">➕</div>
+    <p class="upload-label">Add New Book</p>
+  `;
+  grid.appendChild(uploadCard);
+
+  // Scan ulang elemen yang bisa difokus supaya keyboard/swipe nav berfungsi
+  setTimeout(() => updateFocusableElements(), 100);
+}
+
+// Buka buku tersimpan dari library berdasarkan ID
+async function openBook(bookId) {
+  if (!bookId) return;
+  showToast('Memuat buku...');
+  try {
+    const response = await fetch(`/pdf/open/${bookId}`, { method: 'POST' });
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Gagal membuka buku');
+    }
+    const data = await response.json();
+
+    // Hentikan audio yang sedang berjalan (jika ada)
+    const audio = document.getElementById('pdf-audio-player');
+    if (audio) { audio.pause(); audio.src = ''; }
+    setReaderPlayState(false);
+
+    // Muat ke dalam state reader
+    state.pdfReader.chunks       = data.chunks;
+    state.pdfReader.currentIndex = 0;
+    state.pdfReader.title        = data.title;
+    state.pdfReader.author       = data.author;
+    state.pdfReader.isPlaying    = false;
+    state.pdfReader.isLoading    = false;
+
+    navigateToPage('pdf-reader');
+    setTimeout(() => initReader(), 100);
+
+  } catch (err) {
+    console.error('Open book error:', err);
+    showToast('Error: ' + err.message);
+  }
 }
 
 // Export for external use if needed

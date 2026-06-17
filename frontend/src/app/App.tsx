@@ -109,88 +109,8 @@ export default function App() {
 
               <section className="library-section">
                 <h2 className="section-title">My Library</h2>
-                <div className="library-grid">
-                  <div className="book-card"
-                    role="button"
-                    tabIndex={0}
-                    data-book-id="1"
-                    data-caption="The Great Gatsby book card, by F. Scott Fitzgerald, completed 100 percent, double-click to open book details">
-                    <div className="book-cover book-cover-1">
-                      <span className="book-emoji">🌿</span>
-                    </div>
-                    <h3 className="book-card-title">The Great Gatsby</h3>
-                    <p className="book-card-author">F. Scott Fitzgerald</p>
-                    <div className="book-card-progress">
-                      <div className="progress-bar-small">
-                        <div className="progress-fill-small" style={{ width: '100%' }}></div>
-                      </div>
-                      <span className="progress-label">100%</span>
-                    </div>
-                  </div>
-
-                  <div className="book-card"
-                    role="button"
-                    tabIndex={0}
-                    data-book-id="2"
-                    data-caption="Sapiens book card, by Yuval Noah Harari, 62 percent complete, double-click to continue reading">
-                    <div className="book-cover book-cover-2">
-                      <span className="book-emoji">🦴</span>
-                    </div>
-                    <h3 className="book-card-title">Sapiens</h3>
-                    <p className="book-card-author">Yuval Noah Harari</p>
-                    <div className="book-card-progress">
-                      <div className="progress-bar-small">
-                        <div className="progress-fill-small" style={{ width: '62%' }}></div>
-                      </div>
-                      <span className="progress-label">62%</span>
-                    </div>
-                  </div>
-
-                  <div className="book-card new-book"
-                    role="button"
-                    tabIndex={0}
-                    data-book-id="3"
-                    data-caption="Dune book card, by Frank Herbert, newly added to library, not started yet, double-click to start reading">
-                    <div className="book-cover book-cover-3">
-                      <span className="book-emoji">🏜️</span>
-                      <span className="new-corner-badge">NEW</span>
-                    </div>
-                    <h3 className="book-card-title">Dune</h3>
-                    <p className="book-card-author">Frank Herbert</p>
-                    <div className="book-card-progress">
-                      <div className="progress-bar-small">
-                        <div className="progress-fill-small" style={{ width: '0%' }}></div>
-                      </div>
-                      <span className="progress-label">NEW</span>
-                    </div>
-                  </div>
-
-                  <div className="book-card"
-                    role="button"
-                    tabIndex={0}
-                    data-book-id="4"
-                    data-caption="Thinking Fast and Slow book card, by Daniel Kahneman, 15 percent complete, double-click to continue reading">
-                    <div className="book-cover book-cover-4">
-                      <span className="book-emoji">🧠</span>
-                    </div>
-                    <h3 className="book-card-title">Thinking, Fast and Slow</h3>
-                    <p className="book-card-author">Daniel Kahneman</p>
-                    <div className="book-card-progress">
-                      <div className="progress-bar-small">
-                        <div className="progress-fill-small" style={{ width: '15%' }}></div>
-                      </div>
-                      <span className="progress-label">15%</span>
-                    </div>
-                  </div>
-
-                  <div className="upload-zone-card"
-                    role="button"
-                    tabIndex={0}
-                    data-action="upload"
-                    data-caption="Upload Zone card, add new book to your library, drag and drop PDF or double-click to select file">
-                    <div className="upload-icon">➕</div>
-                    <p className="upload-label">Add New Book</p>
-                  </div>
+                <div className="library-grid" id="library-grid">
+                  {/* Books are injected dynamically by audiobook.js → renderLibraryGrid() */}
                 </div>
               </section>
             </div>
@@ -354,21 +274,32 @@ export default function App() {
 
                 <div className="upload-success" style={{ display: 'none' }}>
                   <div className="success-icon">✓</div>
-                  <h3 className="success-title">Buku Berhasil Diunggah!</h3>
-                  <p className="success-text">Buku Anda siap untuk dibaca</p>
+                  <h3 className="success-title">Buku Berhasil Disimpan!</h3>
+                  <p className="success-text">PDF tersimpan di perpustakaan Anda</p>
+
                   <div className="control-item primary"
                     role="button"
                     tabIndex={0}
                     data-action="start-reading"
-                    data-caption="Tombol mulai membaca, buka pembaca PDF, klik dua kali untuk mulai">
-                    <span className="control-label">Mulai Membaca</span>
+                    data-caption="Tombol baca sekarang, buka pembaca PDF, klik dua kali untuk mulai">
+                    <span className="control-label">Baca Sekarang</span>
                   </div>
+
+                  <div className="control-item"
+                    style={{ marginTop: '16px' }}
+                    role="button"
+                    tabIndex={0}
+                    data-action="go-to-library"
+                    data-caption="Ke perpustakaan, lihat semua buku tersimpan, klik dua kali untuk buka">
+                    <span className="control-label">📚 Ke Perpustakaan</span>
+                  </div>
+
                   <div className="control-item"
                     style={{ marginTop: '16px' }}
                     role="button"
                     tabIndex={0}
                     data-action="reset-upload"
-                    data-caption="Tombol unggah PDF lain, kembali ke halaman awal untuk memilih file baru, klik dua kali untuk reset">
+                    data-caption="Tombol unggah PDF lain, kembali ke halaman awal, klik dua kali untuk reset">
                     <span className="control-label">Unggah PDF Lain</span>
                   </div>
                 </div>
