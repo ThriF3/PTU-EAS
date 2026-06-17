@@ -31,10 +31,14 @@ export default defineConfig({
     },
   },
 
-  // Proxy /pdf/* API calls to Flask backend running on port 5000
+  // Proxy API calls to Flask backend running on port 5000
   server: {
     proxy: {
       '/pdf': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
+      '/stt': {
         target: 'http://localhost:5000',
         changeOrigin: true,
       },

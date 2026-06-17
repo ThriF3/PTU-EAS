@@ -7,6 +7,8 @@ from core.normalizer import normalize
 from tts.speaker import speak
 from pdf_routes import pdf_bp
 from utils.logger import log
+from pydub import AudioSegment
+import io
 import traceback
 
 app = Flask(__name__)
@@ -73,6 +75,42 @@ def upload_audio():
         
     except Exception as e:
         log(f"Error in /listen: {traceback.format_exc()}", level="ERROR")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/stt', methods=['POST'])
+def stt_route():
+    rec = get_recognizer()
+    if not rec:
+        return jsonify({"error": "Failed to initialize recognizer."}), 500
+
+    try:
+        log("API /stt called. Receiving audio for search...")
+        
+        if 'audio' not in request.files:
+            return jsonify({"error": "No audio file uploaded"}), 400
+            
+        audio_file = request.files['audio']
+        audio_bytes = audio_file.read()
+        
+        if not audio_bytes:
+            return jsonify({"error": "Empty audio file"}), 400
+            
+        # 1. Convert WebM/Ogg to WAV using pydub
+        log("Converting audio format to WAV via pydub...")
+        audio = AudioSegment.from_file(io.BytesIO(audio_bytes))
+        wav_io = io.BytesIO()
+        audio.export(wav_io, format="wav")
+        wav_bytes = wav_io.getvalue()
+
+        # 2. Process WAV audio file
+        text = rec.recognize_audio_file(wav_bytes)
+        if not text:
+            return jsonify({"error": "No speech detected or unrecognized format"}), 400
+            
+        return jsonify({"text": text})
+        
+    except Exception as e:
+        log(f"Error in /stt: {traceback.format_exc()}", level="ERROR")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/tts')

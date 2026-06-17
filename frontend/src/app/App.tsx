@@ -109,6 +109,26 @@ export default function App() {
 
               <section className="library-section">
                 <h2 className="section-title">My Library</h2>
+                
+                {/* Voice Search Bar */}
+                <div className="library-search-container">
+                  <input
+                    type="text"
+                    id="library-search-input"
+                    className="library-search-input form-input"
+                    placeholder="Search books..."
+                    aria-label="Search books"
+                  />
+                  <div className="voice-search-btn"
+                    role="button"
+                    tabIndex={0}
+                    data-action="start-library-voice-search"
+                    data-caption="Voice search button, double-click to search library by voice">
+                    <span className="mic-icon-small">🎙️</span>
+                  </div>
+                </div>
+                <div id="voice-search-status" className="voice-search-status" style={{ display: 'none' }}>Listening...</div>
+
                 <div className="library-grid" id="library-grid">
                   {/* Books are injected dynamically by audiobook.js → renderLibraryGrid() */}
                 </div>

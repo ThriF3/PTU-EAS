@@ -29,6 +29,11 @@ let state = {
     author: '',
     selectedFile: null,
   },
+
+  // Library
+  allBooks: [],
+  isRecordingSearch: false,
+  searchMediaRecorder: null,
 };
 
 // Initialize the app
@@ -73,6 +78,9 @@ function init() {
 
   // Muat daftar buku dari backend ke dalam library grid
   loadLibrary();
+
+  // Siapkan pencarian di perpustakaan
+  setupLibrarySearch();
 
   console.log('AudioBook initialized successfully');
 }
@@ -273,6 +281,8 @@ function activateElement(element) {
     navigateToPage('upload');
   } else if (action === 'select-file') {
     handleFileSelect();
+  } else if (action === 'start-library-voice-search') {
+    startLibraryVoiceSearch();
   } else if (action === 'pause') {
     handlePlayPause();
   } else if (action === 'play-book') {
@@ -546,32 +556,87 @@ function handleFileChange(file) {
   setTimeout(() => updateFocusableElements(), 100);
 }
 
-function handleVoiceRecording() {
+async function handleVoiceRecording() {
   const micContainer = document.querySelector('.mic-container');
-  const searchResults = document.querySelector('.search-results');
   const instruction = document.querySelector('.mic-instruction');
 
   if (!micContainer) return;
 
-  const isRecording = micContainer.classList.contains('recording');
+  if (state.isRecordingSearch) {
+    // Stop recording if already recording
+    if (state.searchMediaRecorder && state.searchMediaRecorder.state === 'recording') {
+      state.searchMediaRecorder.stop();
+    }
+    return;
+  }
 
-  if (!isRecording) {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Browser tidak mendukung perekaman suara');
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    state.searchMediaRecorder = mediaRecorder;
+    const audioChunks = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+      state.isRecordingSearch = false;
+      micContainer.classList.remove('recording');
+      if (instruction) instruction.textContent = 'Memproses suara...';
+
+      const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'search_audio.webm');
+
+      try {
+        const response = await fetch('/stt', { method: 'POST', body: formData });
+        if (!response.ok) throw new Error('Gagal memproses suara');
+        
+        const data = await response.json();
+        const recognizedText = data.text || '';
+        
+        if (recognizedText) {
+          showToast(`Hasil: "${recognizedText}"`);
+          if (instruction) instruction.textContent = 'Mengarahkan ke hasil...';
+          
+          // Arahkan ke library dan lakukan filter
+          navigateToPage('library');
+          const searchInput = document.getElementById('library-search-input');
+          if (searchInput) {
+            searchInput.value = recognizedText;
+            handleLibrarySearch(recognizedText);
+          }
+        } else {
+          showToast('Suara tidak dikenali');
+          if (instruction) instruction.textContent = 'Double-click to start voice search';
+        }
+      } catch (err) {
+        console.error('Voice search error:', err);
+        showToast('Error memproses suara');
+        if (instruction) instruction.textContent = 'Double-click to start voice search';
+      } finally {
+        stream.getTracks().forEach(track => track.stop());
+        state.searchMediaRecorder = null;
+      }
+    };
+
+    mediaRecorder.start();
+    state.isRecordingSearch = true;
     micContainer.classList.add('recording');
-    if (instruction) instruction.textContent = 'Listening... Speak your search';
+    if (instruction) instruction.textContent = 'Mendengarkan... (klik dua kali untuk berhenti)';
     showToast('Voice recording started');
 
-    // Simulate voice search
-    setTimeout(() => {
-      micContainer.classList.remove('recording');
-      if (instruction) instruction.textContent = 'Double-click to start voice search';
-      if (searchResults) searchResults.style.display = 'block';
-      showToast('Search complete');
-
-      // Update focusable elements
-      setTimeout(() => {
-        updateFocusableElements();
-      }, 100);
-    }, 3000);
+  } catch (err) {
+    console.error('MediaRecorder error:', err);
+    showToast('Akses mikrofon ditolak atau error');
   }
 }
 
@@ -1015,9 +1080,12 @@ async function loadLibrary() {
     const response = await fetch('/pdf/library');
     if (!response.ok) throw new Error('Gagal memuat perpustakaan');
     const books = await response.json();
-    renderLibraryGrid(books);
+    // Simpan ke state supaya pencarian dapat mengakses seluruh koleksi
+    state.allBooks = Array.isArray(books) ? books : [];
+    renderLibraryGrid(state.allBooks);
   } catch (err) {
     console.error('Library load error:', err);
+    state.allBooks = [];
     renderLibraryGrid([]); // tetap render upload card walau gagal/empty
   }
 }
@@ -1048,13 +1116,13 @@ function renderLibraryGrid(books) {
   }
 
   books.forEach((book, index) => {
-    const ci   = index % COLORS.length;
+    const ci = index % COLORS.length;
     const card = document.createElement('div');
     card.className = 'book-card';
-    card.setAttribute('role',         'button');
-    card.setAttribute('tabIndex',     '0');
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabIndex', '0');
     card.setAttribute('data-book-id', book.id);
-    card.setAttribute('data-action',  'open-book');
+    card.setAttribute('data-action', 'open-book');
     card.setAttribute('data-caption',
       `${book.title} oleh ${book.author}, double-click untuk membuka buku`);
 
@@ -1071,9 +1139,9 @@ function renderLibraryGrid(books) {
   // Selalu tambahkan kartu "Add New Book" di akhir
   const uploadCard = document.createElement('div');
   uploadCard.className = 'upload-zone-card';
-  uploadCard.setAttribute('role',         'button');
-  uploadCard.setAttribute('tabIndex',     '0');
-  uploadCard.setAttribute('data-action',  'upload');
+  uploadCard.setAttribute('role', 'button');
+  uploadCard.setAttribute('tabIndex', '0');
+  uploadCard.setAttribute('data-action', 'upload');
   uploadCard.setAttribute('data-caption',
     'Tambah buku baru ke perpustakaan, double-click untuk mengunggah PDF');
   uploadCard.innerHTML = `
@@ -1084,6 +1152,122 @@ function renderLibraryGrid(books) {
 
   // Scan ulang elemen yang bisa difokus supaya keyboard/swipe nav berfungsi
   setTimeout(() => updateFocusableElements(), 100);
+}
+
+// Buka buku tersimpan dari library berdasarkan ID
+// ============================================================
+// Library Search
+// ============================================================
+function setupLibrarySearch() {
+  const searchInput = document.getElementById('library-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      handleLibrarySearch(e.target.value);
+    });
+  }
+}
+
+function handleLibrarySearch(query) {
+  if (!query) {
+    renderLibraryGrid(state.allBooks);
+    return;
+  }
+  
+  const lowerQuery = query.toLowerCase();
+  const filtered = state.allBooks.filter(book => 
+    (book.title && book.title.toLowerCase().includes(lowerQuery)) ||
+    (book.author && book.author.toLowerCase().includes(lowerQuery))
+  );
+  
+  renderLibraryGrid(filtered);
+}
+
+async function startLibraryVoiceSearch() {
+  const btn = document.querySelector('.voice-search-btn');
+  const statusEl = document.getElementById('voice-search-status');
+  const searchInput = document.getElementById('library-search-input');
+  
+  if (state.isRecordingSearch) {
+    if (state.searchMediaRecorder && state.searchMediaRecorder.state === 'recording') {
+      state.searchMediaRecorder.stop();
+    }
+    return;
+  }
+
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('Browser tidak mendukung perekaman suara');
+    return;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    state.searchMediaRecorder = mediaRecorder;
+    const audioChunks = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        audioChunks.push(event.data);
+      }
+    };
+
+    mediaRecorder.onstop = async () => {
+      state.isRecordingSearch = false;
+      if (btn) btn.classList.remove('recording');
+      if (statusEl) {
+        statusEl.textContent = 'Memproses suara...';
+      }
+
+      const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'search_audio.webm');
+
+      try {
+        const response = await fetch('/stt', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) {
+          throw new Error('Gagal memproses suara');
+        }
+        
+        const data = await response.json();
+        const recognizedText = data.text || '';
+        
+        if (recognizedText) {
+          if (searchInput) {
+            searchInput.value = recognizedText;
+            handleLibrarySearch(recognizedText);
+          }
+          showToast(`Dicari: "${recognizedText}"`);
+        } else {
+          showToast('Suara tidak dikenali');
+        }
+      } catch (err) {
+        console.error('Voice search error:', err);
+        showToast('Error memproses suara');
+      } finally {
+        if (statusEl) statusEl.style.display = 'none';
+        stream.getTracks().forEach(track => track.stop());
+        state.searchMediaRecorder = null;
+      }
+    };
+
+    mediaRecorder.start();
+    state.isRecordingSearch = true;
+    
+    if (btn) btn.classList.add('recording');
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.textContent = 'Mendengarkan... (klik dua kali mic untuk berhenti)';
+    }
+    showToast('Mulai merekam...');
+
+  } catch (err) {
+    console.error('MediaRecorder error:', err);
+    showToast('Akses mikrofon ditolak atau error');
+  }
 }
 
 // Buka buku tersimpan dari library berdasarkan ID
@@ -1104,12 +1288,12 @@ async function openBook(bookId) {
     setReaderPlayState(false);
 
     // Muat ke dalam state reader
-    state.pdfReader.chunks       = data.chunks;
+    state.pdfReader.chunks = data.chunks;
     state.pdfReader.currentIndex = 0;
-    state.pdfReader.title        = data.title;
-    state.pdfReader.author       = data.author;
-    state.pdfReader.isPlaying    = false;
-    state.pdfReader.isLoading    = false;
+    state.pdfReader.title = data.title;
+    state.pdfReader.author = data.author;
+    state.pdfReader.isPlaying = false;
+    state.pdfReader.isLoading = false;
 
     navigateToPage('pdf-reader');
     setTimeout(() => initReader(), 100);
